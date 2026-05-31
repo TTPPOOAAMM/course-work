@@ -48,6 +48,35 @@ def update_my_profile(
     db.refresh(profile)
     return profile
 
+
+@router.get("/{user_id}/profile", response_model=schemas.UserProfileResponse)
+def get_user_profile(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Получить расширенный профиль любого пользователя по ID (Только для Организаторов)"""
+    
+    if current_user.role_id != 2:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="У вас нет прав для просмотра профилей других пользователей"
+        )
+    
+    user = db.query(models.User).filter(
+        models.User.ID_user == user_id, 
+        models.User.is_deleted == False
+    ).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Пользователь не найден или его аккаунт был удален"
+        )
+    
+    return user
+
+
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 def delete_my_account(
     current_user: models.User = Depends(auth.get_current_user),

@@ -14,6 +14,8 @@ import 'bloc/my_events/my_events_bloc.dart';
 
 import 'bloc/applications/applications_bloc.dart';
 import 'screens/event_applications_screen.dart';
+import 'screens/volunteer_profile_screen.dart';
+
 void main() {
   runApp(const VolunteerOrgApp());
 }
@@ -78,19 +80,31 @@ class _AppRouterState extends State<AppRouter> {
         ),
         GoRoute(
           path: '/create-event',
-          builder: (context, state) => BlocProvider(
-            create: (context) => EventBloc(),
-            child: const CreateEventScreen(),
-          ),
+          builder: (context, state) {
+            final eventToEdit = state.extra as Map<String, dynamic>?;
+            return BlocProvider(
+              create: (context) => EventBloc(),
+              child: CreateEventScreen(eventToEdit: eventToEdit),
+            );
+          },
         ),
         GoRoute(
           path: '/event-applications/:id',
           builder: (context, state) {
             final eventId = int.parse(state.pathParameters['id']!);
+            final eventStatus = state.extra as String? ?? 'active';
+            
             return BlocProvider(
               create: (context) => ApplicationsBloc(),
-              child: EventApplicationsScreen(eventId: eventId),
+              child: EventApplicationsScreen(eventId: eventId, eventStatus: eventStatus),
             );
+          },
+        ),
+        GoRoute(
+          path: '/volunteer-profile/:id',
+          builder: (context, state) {
+            final userId = int.parse(state.pathParameters['id']!);
+            return VolunteerProfileScreen(userId: userId);
           },
         ),
       ],

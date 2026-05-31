@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../bloc/event/event_bloc.dart';
 
 class CreateEventScreen extends StatefulWidget {
-  const CreateEventScreen({super.key});
+  final Map<String, dynamic>? eventToEdit;
+
+  const CreateEventScreen({super.key, this.eventToEdit});
 
   @override
   State<CreateEventScreen> createState() => _CreateEventScreenState();
@@ -19,10 +21,23 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   DateTime? _selectedDate;
   int? _selectedLocationId;
 
+  bool get _isEditMode => widget.eventToEdit != null;
+
   @override
   void initState() {
     super.initState();
     context.read<EventBloc>().add(LoadLocations());
+
+    if (_isEditMode) {
+      final event = widget.eventToEdit!;
+      _titleController.text = event['title'] ?? '';
+      _descController.text = event['description'] ?? '';
+      _participantsController.text = (event['max_participants'] ?? '').toString();
+      _selectedLocationId = event['location_id'];
+      if (event['event_date'] != null) {
+        _selectedDate = DateTime.parse(event['event_date']);
+      }
+    }
   }
 
   @override
@@ -36,8 +51,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
+      initialDate: _selectedDate ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: _isEditMode ? DateTime.now().subtract(const Duration(days: 365)) : DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null) {
@@ -50,12 +65,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Новое мероприятие')),
+      appBar: AppBar(title: Text(_isEditMode ? 'Редактирование мероприятия' : 'Новое мероприятие')),
       body: BlocConsumer<EventBloc, EventState>(
         listener: (context, state) {
-          if (state is EventCreateSuccess) {
+          if (state is EventCreateSuccess || state is EventUpdateSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Мероприятие успешно создано!'), backgroundColor: Colors.green),
+              SnackBar(
+                content: Text(_isEditMode ? 'Изменения успешно сохранены!' : 'Мероприятие успешно создано!'), 
+                backgroundColor: Colors.green
+              ),
             );
             context.pop(); 
           } else if (state is EventError) {
@@ -134,24 +152,43 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   FilledButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate() && _selectedDate != null) {
-                        context.read<EventBloc>().add(
-                          CreateNewEvent(
-                            title: _titleController.text,
-                            description: _descController.text,
-                            eventDate: _selectedDate!.toIso8601String().split('T')[0],
-                            locationId: _selectedLocationId!,
-                            maxParticipants: int.parse(_participantsController.text),
-                          ),
-                        );
+                        final title = _titleController.text;
+                        final description = _descController.text;
+                        final eventDate = _selectedDate!.toIso8601String();
+                        final locationId = _selectedLocationId!;
+                        final maxParticipants = int.parse(_participantsController.text);
+
+                        if (_isEditMode) {
+                          context.read<EventBloc>().add(
+                            UpdateEvent(
+                              eventId: widget.eventToEdit!['ID_event'],
+                              title: title,
+                              description: description,
+                              eventDate: eventDate,
+                              locationId: locationId,
+                              maxParticipants: maxParticipants,
+                            ),
+                          );
+                        } else {
+                          context.read<EventBloc>().add(
+                            CreateNewEvent(
+                              title: title,
+                              description: description,
+                              eventDate: eventDate,
+                              locationId: locationId,
+                              maxParticipants: maxParticipants,
+                            ),
+                          );
+                        }
                       } else if (_selectedDate == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Пожалуйста, выберите дату')),
                         );
                       }
                     },
-                    child: const Padding(
-                      padding: EdgeInsets.all(12.0),
-                      child: Text('Создать', style: TextStyle(fontSize: 16)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Text(_isEditMode ? 'Сохранить изменения' : 'Создать', style: const TextStyle(fontSize: 16)),
                     ),
                   ),
                 ],

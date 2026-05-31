@@ -75,7 +75,8 @@ class ApplicationsBloc extends Bloc<ApplicationsEvent, ApplicationsState> {
         data: {'status': event.newStatus},
       );
       
-      add(LoadEventApplications(event.eventId));
+      final response = await _apiClient.dio.get('/api/events/${event.eventId}/applications');
+      emit(ApplicationsLoaded(response.data));
     } on DioException catch (e) {
       final errorMsg = e.response?.data['detail'] ?? 'Ошибка при смене статуса';
       emit(ApplicationsError(errorMsg.toString()));

@@ -73,14 +73,24 @@ class EventUpdate(BaseModel):
     status: Optional[EventStatusEnum] = None
     category_ids: Optional[List[int]] = None 
 
+class CategoryResponse(BaseModel):
+    ID_Categories: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
 class EventResponse(EventBase):
     ID_event: int
     organizer_id: int
     status: EventStatusEnum
-    categories: List["CategoryResponse"] = [] 
+    categories: List[CategoryResponse] = [] 
+    pending_count: int = 0      
+    remaining_seats: int = 0    
 
     class Config:
         from_attributes = True
+
 class AppStatusEnum(str, Enum):
     pending = "pending"
     approved = "approved"
@@ -105,14 +115,7 @@ class ApplicationResponse(BaseModel):
         from_attributes = True
 
 class ApplicationWithVolunteerResponse(ApplicationResponse):
-    volunteer: UserProfileResponse 
-
-    class Config:
-        from_attributes = True
-
-class CategoryResponse(BaseModel):
-    ID_Categories: int
-    name: str
+    volunteer: UserResponse 
 
     class Config:
         from_attributes = True
@@ -124,45 +127,8 @@ class LocationResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class EventBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    location_id: int
-    event_date: datetime
-    max_participants: int
-
-class EventCreate(EventBase):
-    category_ids: List[int] = [] 
-
-class EventUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    location_id: Optional[int] = None
-    event_date: Optional[datetime] = None
-    max_participants: Optional[int] = None
-    status: Optional[EventStatusEnum] = None
-    category_ids: Optional[List[int]] = None
-
-class EventResponse(EventBase):
-    ID_event: int
-    organizer_id: int
-    status: EventStatusEnum
-    categories: List["CategoryResponse"] = [] 
-
-    class Config:
-        from_attributes = True
-
 class ApplicationWithEventResponse(ApplicationResponse):
     event: EventResponse 
-
-    class Config:
-        from_attributes = True
-
-class ApplicationStatusUpdate(BaseModel):
-    status: str
-
-class ApplicationWithVolunteerResponse(ApplicationResponse):
-    volunteer: UserResponse 
 
     class Config:
         from_attributes = True

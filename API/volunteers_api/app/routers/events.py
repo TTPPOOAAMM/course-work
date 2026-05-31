@@ -83,7 +83,14 @@ def get_active_events(
     if search:
         query = query.filter(models.Event.title.ilike(f"%{search}%"))
         
-    return query.order_by(models.Event.event_date.asc()).all()
+    events = query.order_by(models.Event.event_date.asc()).all()
+    
+    for event in events:
+        event.pending_count = sum(1 for app in event.applications if app.status == models.AppStatus.pending)
+        approved_count = sum(1 for app in event.applications if app.status == models.AppStatus.approved)
+        event.remaining_seats = max(0, event.max_participants - approved_count)
+        
+    return events
 
 @router.put("/{event_id}", response_model=schemas.EventResponse)
 def update_event(
@@ -144,6 +151,12 @@ def get_my_events(
         )
     
     events = db.query(models.Event).filter(models.Event.organizer_id == current_user.ID_user).all()
+    
+    for event in events:
+        event.pending_count = sum(1 for app in event.applications if app.status == models.AppStatus.pending)
+        approved_count = sum(1 for app in event.applications if app.status == models.AppStatus.approved)
+        event.remaining_seats = max(0, event.max_participants - approved_count)
+        
     return events
 
 @router.get("/{event_id}/applications", response_model=List[schemas.ApplicationWithVolunteerResponse])
@@ -168,21 +181,3 @@ def get_event_applications(
         )
 
     return event.applications
-
-@router.get("/{event_id}/applications", response_model=List[schemas.ApplicationWithVolunteerResponse])
-def get_event_applications(
-    event_id: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """Получить список заявок для конкретного мероприятия (Только для Организатора)"""
-    
-    event = db.query(models.Event).filter(models.Event.ID_event == event_id).first()
-    if not event:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Мероприятие не найдено")
-        
-    if event.organizer_id != current_user.ID_user:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Вы не можете просматривать заявки чужого мероприятия")
-
-    applications = db.query(models.Application).filter(models.Application.event_id == event_id).all()
-    return applications
